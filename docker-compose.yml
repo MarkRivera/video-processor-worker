@@ -1,0 +1,12 @@
+version: "3"
+services:
+  web:
+    image: mrivera1991/video-processor-worker:1.0
+    ports: 
+      - ${PORT}:${PORT}
+    environment:
+     - PORT=${PORT}
+     - DB_URL=${DB_URL}
+    env_file:
+      - .env
+     
