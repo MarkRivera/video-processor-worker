@@ -1,6 +1,7 @@
 import { Readable } from "stream";
 import Connection from "./connect";
 import { GridFSBucket, ObjectId } from "mongodb";
+import { createWriteStream, existsSync, mkdir, writeFile } from "fs";
 
 export const getBucket = async () => {
   const bucket = await createOrGetGridFS();
@@ -58,6 +59,10 @@ export async function downloadMetadata(bucket: GridFSBucket) {
 export async function downloadFileData(_id: ObjectId, bucket: GridFSBucket) {
   const stream = bucket.openDownloadStream(_id)
   return stream;
+}
+
+export async function downloadFileChunks(_id: string, bucket: GridFSBucket) {
+  return bucket.openDownloadStream(new ObjectId(_id))
 }
 
 export async function deleteFile(_id: ObjectId, bucket: GridFSBucket) {

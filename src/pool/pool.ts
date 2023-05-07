@@ -1,4 +1,4 @@
-import { pool, WorkerPool } from "workerpool";
+import { pool, worker, WorkerPool } from "workerpool";
 
 class Pool {
   private pool: WorkerPool | null;
@@ -10,7 +10,7 @@ class Pool {
   open() {
     if (this.pool) return this.pool;
 
-    this.pool = pool({
+    this.pool = pool("../process-chunk.ts", {
       minWorkers: "max",
     })
 
@@ -18,6 +18,7 @@ class Pool {
   }
 }
 
-let workerPool = new Pool().open()
+const myPool = new Pool();
+let workerPool = myPool.open()
 
 export { workerPool }

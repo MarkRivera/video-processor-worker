@@ -1,13 +1,17 @@
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 dotenv.config();
+const express = require("express");
 
-import express from 'express';
-import { ObjectId } from "mongodb";
 import Connection from "./src/db/connect";
-import { createTask, enqueueTask } from "./src/util/Task";
+import { createTask } from "./src/util/Task";
 import { workerPool } from "./src/pool/pool";
-import { Task } from "./src/queue";
-
+import { downloadFileChunks, getBucket } from "./src/db/gridfs";
+import { createReadStream, createWriteStream, writeFile, writeFileSync } from "fs";
+import { Request, Response } from "express";
+import FfmpegCommand from "fluent-ffmpeg";
+import { PassThrough } from "stream";
+import { resolve } from "path";
+import ffmpeg from "fluent-ffmpeg";
 
 
 const app = express();
@@ -19,48 +23,23 @@ if (!port) {
   throw new Error("Port is missing!")
 }
 
-function taskFunc(task: Task) {
-  let counter = 0;
-  while (counter < 900000000) {
-    counter++;
-  }
-
-  console.log({ task })
-  return counter;
+function constructS3Url(filename: string) {
+  return `https://${process.env.BUCKET_NAME}.s3.${process.env.REGION}.amazonaws.com/${filename}`;
 }
 
-app.put("/process", async (req, res) => {
-  const id = req.body.id as string;
-  const filename = req.body.filename as string;
+app.put("/process", async (req: Request, res: Response) => {
+  const document: Record<string, any> = JSON.parse(req.body.document);
+  const filename: string = req.body.filename;
+  const url = constructS3Url(filename);
 
-  if (!req.body.id) {
-    return res.send("Id is missing, aborting video conversion")
-  }
+  console.log({ document, filename, url })
 
-  // Grab video information
-  const client = await Connection.open();
-  const selectedDB = client.db("user-videos");
-  let count = await selectedDB.collection("videos-bucket.chunks").countDocuments({
-    files_id: new ObjectId(id)
-  })
-
-  // For each Chunk, create a task that a worker will process
-  for (let i = 0; i < count; i++) {
-    let task = createTask({
-      id,
-      filename,
-      totalChunks: count,
-      chunkNumber: i,
-    })
-
-    workerPool.exec(taskFunc, [task]);
-  }
-  // Once inserted, pass to worker to begin processing
-  console.log(workerPool.stats())
+  const command = ffmpeg(url).toFormat('mp4').save('./test-output.mp4')
+  
   return res.send("Success!")
 })
 
-app.get("/health", (req, res) => {
+app.get("/health", (req: Request, res: Response) => {
   res.send("Looks like we're still good!")
 })
 
